@@ -37,7 +37,7 @@ class SearchCounter {
 
 
 /////////////////////////////////////////////////////////////////////////////////////
-// HitList is a list of hits of type Hit which can be operated upon by several anaylsis methods 
+// HitList is a list of hits of type Hit which can be operated upon by several anaylsis methods
 /////////////////////////////////////////////////////////////////////////////////////
 class HitList : public List<Hit>
 {
@@ -59,7 +59,7 @@ public:
   void PrintHitList(HMM* q, std::stringstream& out, const unsigned int maxdbstrlen, const int z, const int Z, const float p, const double E, const int argc, char** argv);
   void PrintHitList(HMM* q, char* outfile, const unsigned int maxdbstrlen, const int z, const int Z, const float p, const double E, const int argc, char** argv);
 
-  // Print alignments of query sequences against hit sequences 
+  // Print alignments of query sequences against hit sequences
   void PrintAlignments(HMM* q, char* outfile, const char showconf, const char showcons,
 			const char showdssp, const char showpred, const float p, const int aliwidth, const int nseqdis,
 			const int b, const int B, const double E, const float S[20][20], char outformat = 0);
@@ -82,7 +82,7 @@ public:
 
   void PrintMatrices(HMM* q, const char* matricesOutputFileName, const size_t max_number_matrices, const float S[20][20]);
   void PrintMatrices(HMM* q, std::stringstream& out, const size_t max_number_matrices, const float S[20][20]);
-  
+
   // Write alignments in tabular output
   void WriteToAlifile(HMM* q, char* alitabfile,
       const int b, const int B, const int z, const int Z,
@@ -92,12 +92,12 @@ public:
       const int b, const int B, const int z, const int Z,
       const float p, const double E);
 
-  // Calculate HHblits composite E-values 
+  // Calculate HHblits composite E-values
   void CalculateHHblitsEvalues(HMM* q, const int dbsize,
 		  const float alphaa, const float alphab, const float alphac, const double prefilter_evalue_thresh);
 
   // Calculate Pvalues as a function of query and template lengths and diversities
-  void CalculatePvalues(HMM* q, const char loc, const char ssm, const float ssw);
+  void CalculatePvalues(HMM* q, const char loc, const char ssm, const float ssw, const bool remove_ss_cap);
 };
 
 #endif

@@ -436,7 +436,7 @@ void HitList::CalculateHHblitsEvalues(HMM* q, const int dbsize,
 //// Calculate Pvalues as a function of query and template lengths and diversities
 /////////////////////////////////////////////////////////////////////////////////////
 void HitList::CalculatePvalues(HMM* q, const char loc, const char ssm,
-    const float ssw) {
+    const float ssw, const bool remove_ss_cap) {
   Hit hit;
   float lamda = LAMDA_GLOB, mu = 3.0;   // init for global search
   const float log1000 = log(1000.0);
@@ -460,7 +460,7 @@ void HitList::CalculatePvalues(HMM* q, const char loc, const char ssm,
     }
     hit.logPval = logPvalue(hit.score, lamda, mu);
     hit.Pval = Pvalue(hit.score, lamda, mu);
-    hit.CalcEvalScoreProbab(N_searched, lamda, loc, ssm, ssw); // calculate Evalue, score_aass, Proba from logPval and score_ss
+    hit.CalcEvalScoreProbab(N_searched, lamda, loc, ssm, ssw, remove_ss_cap); // calculate Evalue, score_aass, Proba from logPval and score_ss
 
     Overwrite(hit);
   }

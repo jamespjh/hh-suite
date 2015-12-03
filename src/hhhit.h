@@ -39,22 +39,22 @@ struct Posterior_Triple {
 };
 
 /////////////////////////////////////////////////////////////////////////////////////
-// // Describes an alignment of two profiles. Used as list element in Hits : List<Hit> 
+// // Describes an alignment of two profiles. Used as list element in Hits : List<Hit>
 /////////////////////////////////////////////////////////////////////////////////////
 class Hit
 {
- public:  
+ public:
   char* longname;       // Name of HMM
   char* name;           // One-word name of HMM
   char* file;           // Basename (with path, without extension) of alignment file that was used to construct the HMM
                         // (path from db-file is prepended to FILE record in HMM file!)
   char fam[IDLEN];      // family ID (derived from name) (FAM field)
-  char sfam[IDLEN];     // superfamily ID (derived from name) 
+  char sfam[IDLEN];     // superfamily ID (derived from name)
   char fold[IDLEN];     // fold ID (derived from name)
   char cl[IDLEN];       // class ID (derived from name)
 
   HHEntry* entry;
-  
+
   float* forward_profile;
   float* backward_profile;
 
@@ -77,13 +77,13 @@ class Hit
   double logEval;        // natural logarithm of Eval
   float Probab;         // probability in % for a positive (depends only on score)
   double Pforward;      // scaled total forward probability : Pforward * Product_{i=1}^{Lq+1}(scale[i])
-  
+
   int L;                // Number of match states in template
   short int irep;       // Index  of single-repeat hit (1: highest scoring repeat hit)
   char lastrep;         // is current hit last (sub)optimal alignment? 0: no  1: yes
-  
-  int n_display;        // number of sequences stored for display of alignment 
-  char** sname;         // names of stored sequences 
+
+  int n_display;        // number of sequences stored for display of alignment
+  char** sname;         // names of stored sequences
   char** seq;           // residues of stored sequences (first at pos 1)
   int nss_dssp;         // index of dssp secondary structure sequence in seq[]
   int nsa_dssp;         // index of of dssp solvent accessibility in seq[]
@@ -91,7 +91,7 @@ class Hit
   int nss_conf;         // index of dssp secondary structure sequence in seq[]
   int nfirst;           // index of query sequence in seq[]
   int ncons;            // index of consensus sequence
-  
+
   int nsteps;           // index for last step in Viterbi path; (first=1)
   int* i;               // i[step] = query match state at step of Viterbi path
   int* j;               // j[step] = template match state at step of Viterbi path
@@ -103,7 +103,7 @@ class Hit
   float* P_posterior;   // P_posterior[step] = posterior prob for MM states (otherwise zero)
   int i1;               // First aligned residue in query
   int i2;               // Last aligned residue in query
-  int j1;               // First aligned residue in template 
+  int j1;               // First aligned residue in template
   int j2;               // Last aligned residue in template
   int matched_cols;     // number of matched columns in alignment against query
   int ssm1;             // SS scoring AFTER  alignment? 0:no  1:yes; t->dssp q->psipred  2:yes; q->dssp t->psipred
@@ -123,7 +123,7 @@ class Hit
   // Constructor (only set pointers to NULL)
   Hit();
   ~Hit(){};
-  
+
   // Free all allocated memory (to delete list of hits)
   void Delete();
 
@@ -151,12 +151,20 @@ class Hit
 
   // Calculate Evalue, score_aass, Proba from logPval and score_ss
   // Calculate Evalue, score_aass, Proba from logPval and score_ss
-  inline void CalcEvalScoreProbab(int N_searched, float lamda, const char loc, const char ssm, const float ssw) {
+  inline void CalcEvalScoreProbab(int N_searched, float lamda, const char loc,
+                                  const char ssm, const float ssw,
+                                  bool remove_ss_cap) {
     Eval = exp(logPval + log(N_searched));
     logEval = logPval + log(N_searched);
     // P-value = 1 - exp(-exp(-lamda*(Saa-mu))) => -lamda*(Saa-mu) = log(-log(1-Pvalue))
-    score_aass = (logPval < -10.0 ? logPval : log(-log(1 - Pval))) / 0.45
+
+    if (remove_ss_cap) {
+      score_aass = (logPval < -10.0 ? logPval : log(-log(1 - Pval))) / 0.45
+        - lamda * score_ss / 0.45 - 3.0;
+    } else {
+      score_aass = (logPval < -10.0 ? logPval : log(-log(1 - Pval))) / 0.45
         - fmin(lamda * score_ss, fmax(0.0, 0.2 * (score - 8.0))) / 0.45 - 3.0;
+    }
     score_sort = score_aass;
     Probab = CalcProbab(loc, ssm, ssw);
   }
@@ -165,7 +173,7 @@ class Hit
   /* void MergeHMM(HMM* Q, HMM* t, float wk[]); */
   char state;          // 0: Start/STOP state  1: MM state  2: GD state (-D)  3: IM state  4: DG state (D-)  5 MI state
   int min_overlap;
-  
+
 private:
   // Calculate probability of true positive : p_TP(score)/( p_TP(score)+p_FP(score) )
   // TP: same superfamily OR MAXSUB score >=0.1

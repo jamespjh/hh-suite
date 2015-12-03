@@ -201,6 +201,7 @@ public:
   int coverage;           // Minimum coverage threshold
   int Ndiff;              // Pick Ndiff most different sequences that passed the other filter thresholds
   bool allseqs;           // if true, do not filter in output alignment; show all sequences
+  bool remove_ss_cap;     // sequence scoring algorithm change proposed by Fidler and Levine
 
   int Mgaps;              // Maximum percentage of gaps for match states
   int M;                  // Match state assignment by  1:upper/lower case  2:percentage rule  3:marked sequence

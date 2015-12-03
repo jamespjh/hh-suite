@@ -909,7 +909,7 @@ void HHblits::add_hits_to_hitlist(std::vector<Hit>& hits, HitList& hitlist) {
   hitlist.SortList();
 
   // Use NN prediction of lamda and mu
-  hitlist.CalculatePvalues(q, par.loc, par.ssm, par.ssw);
+  hitlist.CalculatePvalues(q, par.loc, par.ssm, par.ssw, par.remove_ss_cap);
 
   // Calculate E-values as combination of P-value for Viterbi HMM-HMM comparison and prefilter E-value: E = Ndb P (Epre/Ndb)^alpha
   if (par.prefilter)
@@ -973,7 +973,7 @@ void HHblits::RescoreWithViterbiKeepAlignment(HMMSimd& q_vec,
 
   hitlist.SortList();
 
-  hitlist.CalculatePvalues(q, par.loc, par.ssm, par.ssw);  // Use NN prediction of lamda and mu
+  hitlist.CalculatePvalues(q, par.loc, par.ssm, par.ssw, par.remove_ss_cap);  // Use NN prediction of lamda and mu
 
   if (par.prefilter)
     hitlist.CalculateHHblitsEvalues(q, par.dbsize, par.alphaa, par.alphab,
@@ -1603,4 +1603,3 @@ void HHblits::writeMatricesFile(HHblits& hhblits, stringstream& out) {
   hhblits.hitlist.PrintMatrices(hhblits.q, out, hhblits.par.max_number_matrices,
                                 hhblits.S);
 }
-

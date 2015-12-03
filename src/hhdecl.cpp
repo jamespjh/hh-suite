@@ -95,6 +95,7 @@ void Parameters::SetDefaults() {
 	coverage = 0;              // default for minimum coverage threshold
 	Ndiff = 100;           // pick Ndiff most different sequences from alignment
 	allseqs = false;    // if true, do not filter result MSA; show all sequences
+  remove_ss_cap = false; // option defined by Fidler and Levine
 
 	Neff = 0; // Filter alignment to a diversity (Neff) with a maximum Neff of par.Neff
 
@@ -225,5 +226,3 @@ void Parameters::SetDefaults() {
 Parameters::Parameters() {
 	SetDefaults();
 }
-
-
