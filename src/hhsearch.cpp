@@ -411,7 +411,7 @@ void HHsearch::ProcessArguments(int argc, char** argv, Parameters& par) {
     else if (!strcmp(argv[i], "-all") || !strcmp(argv[i], "-nodiff")) {
       par.allseqs = true;
     }
-		else if (!strcmp(argv[i],"-remove_ss_cap") && (i < argc - 1))
+		else if (!strcmp(argv[i],"-remove_ss_cap") && (i < argc))
 			par.remove_ss_cap = true; // extra parameter defined by Fidler and Levine
 		else if (!strcmp(argv[i], "-neff") && (i < argc - 1))
 			par.Neff = atof(argv[++i]);
