@@ -165,16 +165,19 @@ public:
   char infile[NAMELEN];   // input filename
   char outfile[NAMELEN];  // output filename
   char matrices_output_file[NAMELEN];
+  bool filter_matrices;
   char pairwisealisfile[NAMELEN]; // output filename with pairwise alignments
   char alisbasename[NAMELEN];
   char alnfile[NAMELEN];  // name of output alignment file in A3M format (for iterative search)
   char hhmfile[NAMELEN];  // name of output HHM file for (iterative search)
   char psifile[NAMELEN];  // name of output alignmen file in PSI-BLAST format (iterative search)
   char scorefile[NAMELEN];// table of scores etc for all HMMs in searched database
+  char m8file[NAMELEN];   // blast tab format for all HMMs in searched database
   char indexfile[NAMELEN];// optional file containing indeices of aligned residues in given alignment
   char tfile[NAMELEN];    // template filename (in hhalign)
   char alitabfile[NAMELEN]; // where to write pairs of aligned residues (-atab option)
   char* exclstr;          // optional string containing list of excluded residues, e.g. '1-33,97-168'
+  char* template_exclstr;
   int aliwidth;           // number of characters per line in output alignments for HMM search
   float p;                // minimum probability for inclusion in hit list and alignments
   double E;               // maximum E-value for inclusion in hit list and alignment list

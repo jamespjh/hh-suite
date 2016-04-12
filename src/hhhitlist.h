@@ -79,10 +79,13 @@ public:
   // Print score distribution into file score_dist
   void PrintScoreFile(HMM* q, char* outputfile);
   void PrintScoreFile(HMM* q, std::stringstream& outputstream);
+    
+  void PrintM8File(HMM* q, char* outputfile);
+  void PrintM8File(HMM* q, std::stringstream& outputstream);
 
-  void PrintMatrices(HMM* q, const char* matricesOutputFileName, const size_t max_number_matrices, const float S[20][20]);
-  void PrintMatrices(HMM* q, std::stringstream& out, const size_t max_number_matrices, const float S[20][20]);
-
+  void PrintMatrices(HMM* q, const char* matricesOutputFileName, const bool filter_matrices, const size_t max_number_matrices, const float S[20][20]);
+  void PrintMatrices(HMM* q, std::stringstream& out, const bool filter_matrices, const size_t max_number_matrices, const float S[20][20]);
+  
   // Write alignments in tabular output
   void WriteToAlifile(HMM* q, char* alitabfile,
       const int b, const int B, const int z, const int Z,

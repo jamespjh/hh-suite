@@ -198,8 +198,10 @@ void Parameters::SetDefaults() {
 	strcpy(infile, ""); // was reverted back from 'strcpy(infile,"stdin");' (to show help list when no options are given)
 	strcpy(outfile, "");
 	strcpy(matrices_output_file, "");
+	filter_matrices = false;
 	strcpy(pairwisealisfile, "");
 	strcpy(scorefile, "");
+    strcpy(m8file, "");
 	strcpy(indexfile, "");
 	strcpy(alnfile, "");
 	strcpy(hhmfile, "");
@@ -207,6 +209,7 @@ void Parameters::SetDefaults() {
 	strcpy(alitabfile, "");
 	strcpy(alisbasename, "");
 	exclstr = NULL;
+  template_exclstr = NULL;
 
 	max_number_matrices = 100;
 
