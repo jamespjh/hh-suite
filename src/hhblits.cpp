@@ -636,7 +636,7 @@ void HHblits::ProcessArguments(int argc, char** argv, Parameters& par) {
         par.matrix = 80;
       else
         HH_LOG(WARNING) << "Ignoring unknown option " << argv[i] << std::endl;
-    } else if (!strcmp(argv[i], "-M") && (i < argc - 1))
+    } else if (!strcmp(argv[i], "-M") && (i < argc - 1)) {
       if (!strcmp(argv[++i], "a2m") || !strcmp(argv[i], "a3m"))
         par.M = 1;
       else if (!strcmp(argv[i], "first"))
@@ -646,6 +646,7 @@ void HHblits::ProcessArguments(int argc, char** argv, Parameters& par) {
         par.M = 2;
       } else
         HH_LOG(WARNING) << "Ignoring unknown argument: -M " << argv[i] << std::endl;
+    }
     else if (!strcmp(argv[i], "-p") && (i < argc - 1))
       par.p = atof(argv[++i]);
     else if (!strcmp(argv[i], "-E") && (i < argc - 1))
