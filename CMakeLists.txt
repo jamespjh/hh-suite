@@ -1,23 +1,21 @@
 cmake_minimum_required(VERSION 2.8.12)
-set(CMAKE_LEGACY_CYGWIN_WIN32 0)
+project(hhsuite CXX)
+
 SET(HAVE_SSSE3 0 CACHE BOOL "Have SSSE3")
 SET(HAVE_AVX2 0 CACHE BOOL "Have AVX2")
-project("hhsuite")
 
 #set(CMAKE_BUILD_TYPE Release)
 
 # find compiler
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-  # using Clang
-  message("-- Compilter is clang(++)")
+  message("-- Compiler is clang(++)")
   set(CMAKE_COMPILER_IS_CLANG 1)
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-  # using GCC
-  message("-- Compilter is GNU ")
+  message("-- Compiler is GNU ")
   set(CMAKE_COMPILER_IS_GNUCXX 1)
   set(CMAKE_COMPILER_IS_GNUCCC 1)
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-  # using Intel C++
+  message("-- Compiler is ICC ")
   set(CMAKE_COMPILER_IS_ICC 1)
 endif()
 
@@ -26,7 +24,9 @@ set (HHSUITE_VERSION_MINOR 0)
 set (HHSUITE_VERSION_PATCH 0)
 set (HHSUITE_DATE "15-03-2015")
 
-#set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 INSTALL(FILES
   hhsuite-userguide.pdf
@@ -36,14 +36,13 @@ INSTALL(FILES
   DESTINATION ./
 )
 
-
-
 include_directories(src)
 include_directories(lib/ffindex/src)
 
 add_subdirectory(src)
 add_subdirectory(data)
 add_subdirectory(scripts)
+add_subdirectory(test)
 #add_subdirectory(doc)
 add_subdirectory(lib/ffindex)
 
@@ -81,4 +80,4 @@ set (CPACK_PACKAGE_VERSION_MINOR "${HHSUITE_VERSION_MINOR}")
 set (CPACK_PACKAGE_VERSION_MINOR "${HHSUITE_VERSION_PATCH}")
 INCLUDE(CPack)
 
-
+enable_testing()

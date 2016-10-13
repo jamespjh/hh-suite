@@ -219,9 +219,11 @@ void Parameters::SetDefaults() {
 	num_rounds = 2;
 	already_seen_filter = true;   // Perform filtering of already seen HHMs
 	realign_old_hits = false; // Realign old hits in last round or use previous alignments
-	neffmax = 10.0;
+	neffmax = 20.0;
 	threads = 2;
 	nocontxt = false;
+
+	interim_filter = INTERIM_FILTER_FULL;
 }
 
 Parameters::Parameters() {

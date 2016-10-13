@@ -1,3 +1,13 @@
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../cmake")
+
+#Sanitizers
+if(${HAVE_SANITIZER})
+	include(FindUBSan)
+	include(FindASan)
+	include(FindMSan)
+	include(FindTSan)
+endif()
+
 #SSE
 if(${HAVE_AVX2})
     ADD_DEFINITIONS("-DAVX2")
@@ -6,7 +16,6 @@ elseif(${HAVE_SSSE3})
     ADD_DEFINITIONS("-DSSE")
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mssse3")
 else()
-    set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/../cmake")
     include(CheckSSEFeatures)
     ADD_DEFINITIONS(${CXX_DFLAGS})
     if(${HAVE_AVX2_EXTENSIONS})
@@ -118,26 +127,26 @@ add_library(CS_OBJECTS OBJECT ${CS_SOURCE})
 
 # add the executable
 add_executable(hhblits 
-	hhblits_app.cpp	$<TARGET_OBJECTS:CS_OBJECTS> $<TARGET_OBJECTS:HH_OBJECTS>
-	$<TARGET_OBJECTS:hhviterbialgorithm_with_celloff>
-	$<TARGET_OBJECTS:hhviterbialgorithm_and_ss>
-	$<TARGET_OBJECTS:hhviterbialgorithm_with_celloff_and_ss>
+    hhblits_app.cpp	$<TARGET_OBJECTS:CS_OBJECTS> $<TARGET_OBJECTS:HH_OBJECTS>
+    $<TARGET_OBJECTS:hhviterbialgorithm_with_celloff>
+    $<TARGET_OBJECTS:hhviterbialgorithm_and_ss>
+    $<TARGET_OBJECTS:hhviterbialgorithm_with_celloff_and_ss>
 )
 target_link_libraries (hhblits ffindex)
+
 if (OPENMP_FOUND)
-add_executable(hhblits_omp
-  hhblits_omp.cpp $<TARGET_OBJECTS:CS_OBJECTS> $<TARGET_OBJECTS:HH_OBJECTS>
-  $<TARGET_OBJECTS:hhviterbialgorithm_with_celloff>
-  $<TARGET_OBJECTS:hhviterbialgorithm_and_ss>
-  $<TARGET_OBJECTS:hhviterbialgorithm_with_celloff_and_ss>
-)
-target_link_libraries (hhblits_omp ffindex)
+    add_executable(hhblits_omp
+        hhblits_omp.cpp $<TARGET_OBJECTS:CS_OBJECTS> $<TARGET_OBJECTS:HH_OBJECTS>
+        $<TARGET_OBJECTS:hhviterbialgorithm_with_celloff>
+        $<TARGET_OBJECTS:hhviterbialgorithm_and_ss>
+        $<TARGET_OBJECTS:hhviterbialgorithm_with_celloff_and_ss>
+    )
+    target_link_libraries (hhblits_omp ffindex)
 
-INSTALL(PROGRAMS 
-  ${CMAKE_CURRENT_BINARY_DIR}/hhblits_omp
-  DESTINATION bin
-)
-
+    INSTALL(PROGRAMS 
+        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/hhblits_omp
+        DESTINATION bin
+    )
 endif()
 
 add_executable(hhmake
@@ -209,32 +218,65 @@ add_executable(a3m_database_filter
 target_link_libraries (a3m_database_filter ffindex)
 
 add_executable(cstranslate
-  cs/cstranslate_app.cc $<TARGET_OBJECTS:CS_OBJECTS>
+  cs/cstranslate_app.cc
+        $<TARGET_OBJECTS:CS_OBJECTS>
+        $<TARGET_OBJECTS:HH_OBJECTS>
+        $<TARGET_OBJECTS:hhviterbialgorithm_with_celloff>
+        $<TARGET_OBJECTS:hhviterbialgorithm_and_ss>
+        $<TARGET_OBJECTS:hhviterbialgorithm_with_celloff_and_ss>
+        $<TARGET_OBJECTS:A3M_COMPRESS_OBJECT>
 )
 target_link_libraries (cstranslate ffindex)
 
-#add_executable(cstranslate_omp
-#  cs/cstranslate_omp.cc $<TARGET_OBJECTS:CS_OBJECTS>
-#)
+find_package(MPI QUIET)
 
-INSTALL(PROGRAMS 
-	${CMAKE_CURRENT_BINARY_DIR}/hhblits 
-	${CMAKE_CURRENT_BINARY_DIR}/hhmake 
-	${CMAKE_CURRENT_BINARY_DIR}/hhfilter 
-	${CMAKE_CURRENT_BINARY_DIR}/hhsearch 
-	${CMAKE_CURRENT_BINARY_DIR}/hhalign 
-	${CMAKE_CURRENT_BINARY_DIR}/hhconsensus 
-	${CMAKE_CURRENT_BINARY_DIR}/a3m_extract
-	${CMAKE_CURRENT_BINARY_DIR}/a3m_database_reduce
-	${CMAKE_CURRENT_BINARY_DIR}/a3m_database_extract
-	${CMAKE_CURRENT_BINARY_DIR}/a3m_database_filter 
-	${CMAKE_CURRENT_BINARY_DIR}/cstranslate 
-	DESTINATION bin
-)
+if(MPI_CXX_FOUND)
+    include_directories(${MPI_CXX_INCLUDE_PATH})
 
-if (OPENMP_FOUND)
-INSTALL(PROGRAMS 
-	${CMAKE_CURRENT_BINARY_DIR}/hhblits_omp 
-	DESTINATION bin
-)
+    #hhblits_mpi
+    add_executable(hhblits_mpi
+	         hhblits_mpi.cpp $<TARGET_OBJECTS:CS_OBJECTS> $<TARGET_OBJECTS:HH_OBJECTS>
+	         $<TARGET_OBJECTS:hhviterbialgorithm_with_celloff>
+	         $<TARGET_OBJECTS:hhviterbialgorithm_and_ss>
+	         $<TARGET_OBJECTS:hhviterbialgorithm_with_celloff_and_ss>
+	       )
+    target_link_libraries(hhblits_mpi ffindex mpq)
+    target_link_libraries(hhblits_mpi ${MPI_CXX_LIBRARIES})
+    set_target_properties(hhblits_mpi PROPERTIES COMPILE_FLAGS "${MPI_CXX_COMPILE_FLAGS}")
+    set_target_properties(hhblits_mpi PROPERTIES LINK_FLAGS "${MPI_CXX_LINK_FLAGS}")
+
+    install(PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/hhblits_mpi DESTINATION bin)
+
+    #cstranslate_mpi
+    add_executable(cstranslate_mpi
+            cs/cstranslate_mpi_app.cc
+            $<TARGET_OBJECTS:CS_OBJECTS>
+            $<TARGET_OBJECTS:HH_OBJECTS>
+            $<TARGET_OBJECTS:hhviterbialgorithm_with_celloff>
+            $<TARGET_OBJECTS:hhviterbialgorithm_and_ss>
+            $<TARGET_OBJECTS:hhviterbialgorithm_with_celloff_and_ss>
+            $<TARGET_OBJECTS:A3M_COMPRESS_OBJECT>
+            )
+    target_link_libraries(cstranslate_mpi ffindex mpq)
+    target_link_libraries(cstranslate_mpi ${MPI_CXX_LIBRARIES})
+    set_target_properties(cstranslate_mpi PROPERTIES COMPILE_FLAGS "${MPI_CXX_COMPILE_FLAGS}")
+    set_target_properties(cstranslate_mpi PROPERTIES LINK_FLAGS "${MPI_CXX_LINK_FLAGS}")
+
+    install(PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/cstranslate_mpi DESTINATION bin)
 endif()
+
+INSTALL(PROGRAMS 
+	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/hhblits 
+	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/hhmake 
+	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/hhfilter 
+	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/hhsearch 
+	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/hhalign 
+	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/hhconsensus 
+	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/a3m_extract
+	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/a3m_database_reduce
+	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/a3m_database_extract
+	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/a3m_database_filter 
+	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/cstranslate
+	DESTINATION bin
+)
+

@@ -6,7 +6,16 @@
  
 [ ![Codeship Status for soedinglab/hh-suite](https://codeship.com/projects/0936c290-2248-0133-bcb4-52bb0fef976f/status?branch=master)](https://codeship.com/projects/96085)
 
+[ ![Build Status](https://travis-ci.org/soedinglab/hh-suite.svg?branch=master)](https://travis-ci.org/soedinglab/hh-suite)
+
 The HH-suite is an open-source software package for sensitive protein sequence searching based on the pairwise alignment of hidden Markov models (HMMs).
+
+## WARNING ##
+We had to rename our repository for ffindex, so it might be necessary to run the following commands to update the submodule in your clone:
+
+	git pull
+	git submodule deinit
+	git submodule init
 
 
 ## Requirements
@@ -14,6 +23,7 @@ The HH-suite is an open-source software package for sensitive protein sequence s
 To compile from source, you will need:
  * a recent C/C++ compiler
  * [CMake](http://cmake.org/) 2.8.12 or later
+ * install [pdbx python library](https://github.com/soedinglab/pdbx)
 
 
 ## Installation

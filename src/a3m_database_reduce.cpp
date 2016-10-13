@@ -161,6 +161,10 @@ int main(int argc, char **argv) {
     delete out_buffer;
   }
 
+  fflush(ca3m_index_fh);
+  ffsort_index(a3mIndexFile.c_str(), ca3m_index_fh);
+
+  fclose(ca3m_index_fh);
   fclose(ca3m_data_fh);
 }
 

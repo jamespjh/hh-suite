@@ -7,6 +7,8 @@
 // hhalignment.C
 #include "hhalignment.h"
 #include "util.h"
+#include <vector>
+#include <map>
 
 using std::cout;
 using std::cerr;
@@ -32,6 +34,7 @@ Alignment::Alignment(int maxseq, int maxres) {
   keep = new char[maxseq + 2];
   display = new char[maxseq + 2];
   wg = new float[maxseq + 2];
+  this->maxseq = maxseq;
   nseqs = new int[maxres + 2];
   N_in = L = 0;
   nres = NULL;           // number of residues per sequence k
@@ -493,7 +496,6 @@ void Alignment::Read(FILE* inf, char infile[], const char mark,
       }
       cur_seq[l] = '\0';  //Ensure that cur_seq ends with a '\0' character
     }  //end else
-
   }
   /////////////////////////////////////////////////////////////////////////
 
@@ -899,7 +901,7 @@ void Alignment::Compress(const char infile[], const char cons, const int maxres,
     case 1:
     default:
 
-      // Warn if alignment is ment to be -M first or -M <%> instead of A2M/A3M
+      // Warn if alignment is meant to be -M first or -M <%> instead of A2M/A3M
       // Seed/query sequence contains a gap ...
       if (strchr(seq[kfirst], '-')) {
         unsigned int len = strlen(seq[kfirst]) - 1;
@@ -1112,6 +1114,13 @@ void Alignment::Compress(const char infile[], const char cons, const int maxres,
               seq[k][h[k]++] = MatchChr(seq[k][l]);
               X[k][i] = X[k][l];
               I[k][i] = 0;
+
+              //kfirst might not be copied in the case of consensus sequences
+              //so it will be deleted and kfirst will be set to 0
+              //kfirst needs to be set to the next following sequence
+              if (kfirst == -1) {
+                kfirst = k;
+              }
             } else if (k == kss_dssp || k == kss_pred) {
               seq[k][h[k]++] = MatchChr(seq[k][l]);
               X[k][i] = ss2i(seq[k][l]);
@@ -1121,6 +1130,10 @@ void Alignment::Compress(const char infile[], const char cons, const int maxres,
             } else if (k == kss_conf) {
               seq[k][h[k]++] = seq[k][l];
               X[k][i] = cf2i(seq[k][l]);
+            }
+            //consensus sequence, keep[kfirst] == 0
+            else if (k == kfirst) {
+              kfirst = -1;
             }
           }
         } else {
@@ -1264,12 +1277,12 @@ void Alignment::Compress(const char infile[], const char cons, const int maxres,
     exit(1);
   }
 
-  // Avert user about -cons option?
+  // Avert user about -add_cons option?
   if (!cons) {
     for (i = 1; i <= L; ++i)
       if (X[kfirst][i] == GAP) {
         HH_LOG(INFO)
-            << "NOTE: Use the '-cons' option to calculate a consensus sequence as first sequence of the alignment.\n";
+            << "NOTE: Use the '-add_cons' option to calculate a consensus sequence as first sequence of the alignment with hhconsensus or hhmake.\n";
         break;
       }
   }
@@ -1444,6 +1457,7 @@ int Alignment::FilterForDisplay(int max_seqid, const char mark,
     n_display++;
   }
   delete[] dummy;
+
   return n_display;
 }
 
@@ -1454,6 +1468,111 @@ int Alignment::Filter(int max_seqid, const float S[20][20], int coverage,
                       int qid, float qsc, int N) {
   return Filter2(keep, coverage, qid, qsc, 20, max_seqid, N, S);
 }
+
+void Alignment::Shrink() {
+  char** new_X = new char*[maxseq + 2];
+  short unsigned int** new_I = new short unsigned int*[maxseq + 2];;
+  char** new_sname = new char*[maxseq + 2];
+  char** new_seq = new char*[maxseq + 2];
+
+  char* new_keep = new char[maxseq + 2];
+  char* new_display = new char[maxseq + 2];
+  float* new_wg = new float[maxseq + 2];
+
+  int new_kss_dssp = -1;
+  int new_ksa_dssp = -1;
+  int new_kss_pred = -1;
+  int new_kss_conf = -1;
+  int new_kfirst = -1;
+
+  int new_N_in = N_in;
+  int new_k = 0;
+  for(int k = 0; k < N_in; k++) {
+	if(keep[k] == 0 && k != kss_dssp && k != ksa_dssp && k != kss_pred && k != kss_conf && k != kfirst) {
+	  free(X[k]);
+	  delete[] I[k];
+	  delete[] sname[k];
+	  delete[] seq[k];
+	  new_N_in--;
+	}
+	else {
+	  new_X[new_k] = X[k];
+	  new_I[new_k] = I[k];
+	  new_sname[new_k] = sname[k];
+	  new_seq[new_k] = seq[k];
+
+	  new_keep[new_k] = keep[k];
+	  new_display[new_k] = display[k];
+	  new_wg[new_k] = wg[k];
+
+	  if (k == kss_dssp) {
+		  new_kss_dssp = new_k;
+	  }
+	  else if (k == ksa_dssp) {
+		  new_ksa_dssp = new_k;
+	  }
+	  else if (k == kss_pred) {
+		  new_kss_pred = new_k;
+	  }
+	  else if (k == kss_conf) {
+		  new_kss_conf = new_k;
+	  }
+	  else if (k == kfirst) {
+		  new_kfirst = new_k;
+	  }
+
+	  new_k++;
+	}
+  }
+
+  delete[] X;
+  X= new_X;
+
+  delete[] I;
+  I = new_I;
+
+  delete[] sname;
+  sname = new_sname;
+
+  delete[] seq;
+  seq = new_seq;
+
+  delete[] keep;
+  keep = new_keep;
+
+  delete[] display;
+  display = new_display;
+
+  delete[] wg;
+  wg = new_wg;
+
+  kss_dssp = new_kss_dssp;
+  ksa_dssp = new_ksa_dssp;
+  kss_pred = new_kss_pred;
+  kss_conf = new_kss_conf;
+  kfirst = new_kfirst;
+
+  N_in = new_N_in;
+
+  if(ksort != NULL) {
+    delete[] ksort;
+    ksort = NULL;
+  }
+  if(first != NULL) {
+    delete[] first;
+	first = NULL;
+  }
+  if(last != NULL) {
+    delete[] last;
+    last = NULL;
+  }
+  if(nres != NULL) {
+	delete[] nres;
+	nres = NULL;
+  }
+}
+
+
 
 /////////////////////////////////////////////////////////////////////////////////////
 // Select set of representative sequences in the multiple sequence alignment
@@ -1520,7 +1639,7 @@ int Alignment::Filter2(char keep[], int coverage, int qid, float qsc,
     first = new int[N_in];         // first non-gap position in sequence k
     last = new int[N_in];          // last  non-gap position in sequence k
     for (k = 0; k < N_in; ++k)  // do this for ALL sequences, not only those with in[k]==1 (since in[k] may be display[k])
-        {
+    {
       for (i = 1; i <= L; ++i)
         if (X[k][i] < NAA)
           break;
@@ -1538,7 +1657,7 @@ int Alignment::Filter2(char keep[], int coverage, int qid, float qsc,
       delete[] nres;
     nres = new int[N_in];
     for (k = 0; k < N_in; ++k)  // do this for ALL sequences, not only those with in[k]==1 (since in[k] may be display[k])
-        {
+    {
       int nr = 0;
       for (i = first[k]; i <= last[k]; ++i)
         if (X[k][i] < NAA)
@@ -1711,17 +1830,6 @@ int Alignment::Filter2(char keep[], int coverage, int qid, float qsc,
     if (stop)
       break;
 
-//       // DEBUG
-//       printf("idmax    ");
-//       for (i=1; i<=L; ++i) printf("%2i ",idmax[i]);
-//       printf("\n");
-//       printf("idmaxwin ");
-//       for (i=1; i<=L; ++i) printf("%2i ",idmaxwin[i]);
-//       printf("\n");
-//       printf("N[i]     ");
-//       for (i=1; i<=L; ++i) printf("%2i ",N[i]);
-//       printf("\n");
-
     // Loop over all candidate sequences kk (-> k)
     for (kk = 0; kk < N_in; ++kk) {
       if (inkk[kk])
@@ -1745,23 +1853,18 @@ int Alignment::Filter2(char keep[], int coverage, int qid, float qsc,
       for (i = first[k]; i <= last[k]; ++i)
         if (idmaxwin[i] > seqidk)
           seqidk = idmaxwin[i];
+
       if (seqid == seqid_prev[k])
         continue;  // sequence has already been rejected at this seqid threshold => reject this time
+
       seqid_prev[k] = seqid;
       diff_min_frac = 0.9999 - 0.01 * seqidk;  // min fraction of differing positions between sequence j and k needed to accept sequence k
+
       // Loop over already accepted sequences
       for (jj = 0; jj < kk; ++jj) {
         if (!inkk[jj])
           continue;
         j = ksort[jj];
-//                for (int i = first[k]; i <= last[k]; ++i) {
-//                    printf("%02d", (int)X[k][i]);
-//                }
-//                std::cout << std::endl;
-//                for (int i = first[j]; i <= last[j]; ++i) {
-//                    printf("%02d", (int)X[j][i]);
-//                }
-//                std::cout << std::endl;
 
         first_kj = imax(first[k], first[j]);
         last_kj = imin(last[k], last[j]);
@@ -1799,10 +1902,7 @@ int Alignment::Filter2(char keep[], int coverage, int qid, float qsc,
           // int _mm_movemask_epi8(__m128i a) creates 16-bit mask from most significant bits of
           // the 16 signed or unsigned 8-bit integers in a and zero-extends the upper bits.
           int res = simdi8_movemask(simdi_or(NO_AA_K, NO_AA_J));
-//                    for (int u = 0; u < 32; ++u) {
-//                        printf("%02d:%02d ", (int) ((char*)&XK[i])[u], (int) ((char*)&XK[i])[u]);
-//                    }
-//                    std::cout << std::endl;
+
           cov_kj -= NumberOfSetBits(res);  // subtract positions that should not contribute to coverage
 
           // Compute 16 bit mask that indicates positions where k and j have identical residues
@@ -1813,40 +1913,24 @@ int Alignment::Filter2(char keep[], int coverage, int qid, float qsc,
           diff += (VECSIZE_INT * 4) - NumberOfSetBits(c | res);
 
         }
-//            // DEBUG
-//            printf("%20.20s with %20.20s:  diff=%i  diff_min_frac*cov_kj=%f  diff_suff=%i  nres=%i  cov_kj=%i\n",sname[k],sname[j],diff,diff_min_frac*cov_kj,diff_suff,nres[k],cov_kj);
-//            printf("%s\n%s\n\n",seq[k],seq[j]);
-        if (diff < diff_suff && float(diff) <= diff_min_frac * cov_kj)
-          break;  //dissimilarity < acceptace threshold? Reject!
 
+        //dissimilarity < acceptace threshold? Reject!
+        if (diff < diff_suff && float(diff) <= diff_min_frac * cov_kj)
+          break;
       }
-      if (jj >= kk)  // did loop reach end? => accept k. Otherwise reject k (the shorter of the two)
-          {
+
+      // did loop reach end? => accept k. Otherwise reject k (the shorter of the two)
+      if (jj >= kk) {
         in[k] = inkk[kk] = 1;
         n++;
         for (i = first[k]; i <= last[k]; ++i)
           N[i]++;  // update number of sequences at position i
-//            printf("%i %20.20s accepted\n",k,sname[k]);
       }
-//        else
-//          {
-//            printf("%20.20s rejected: too similar with seq %20.20s  diff=%i  diff_min_frac*cov_kj=%f  diff_suff=%i  nres=%i  cov_kj=%i\n",sname[k],sname[j],diff,diff_min_frac*cov_kj,diff_suff,nres[k],cov_kj);
-//            printf("%s\n%s\n\n",seq[k],seq[j]);
-//          }
-
     }  // End Loop over all candidate sequences kk
 
-//       // DEBUG
-//       printf("\n");
-//       printf("seqid_prev[k]= \n");
-//       for (k=0; k<N_in; ++k) printf("%2i ",seqid_prev[k]);
-//       printf("\n");
-
     // Increment seqid
-    seqid_step = imax(
-        1, imin(5, diffNmax / (diffNmax_prev - diffNmax + 1) * seqid_step / 2));
+    seqid_step = imax(1, imin(5, diffNmax / (diffNmax_prev - diffNmax + 1) * seqid_step / 2));
     seqid += seqid_step;
-
   }  // End Loop over seqid
 
   HH_LOG(DEBUG) << n << " out of " << N_in - N_ss

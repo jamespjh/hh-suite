@@ -341,6 +341,10 @@ void HHblits::help(Parameters& par, char all) {
 
   printf("Filter options applied to query MSA, database MSAs, and result MSA              \n");
   printf(" -all           show all sequences in result MSA; do not filter result MSA      \n");
+  printf(" -interim_filter NONE|FULL  \n");
+  printf("                filter sequences of query MSA during merging to avoid early stop (default: FULL)\n");
+  printf("                  NONE: disables the intermediate filter \n");
+  printf("                  FULL: if an early stop occurs compare filter seqs in an all vs. all comparison\n");
   printf(" -id   [0,100]  maximum pairwise sequence identity (def=%i)\n", par.max_seqid);
   printf(" -diff [0,inf[  filter MSAs by selecting most diverse set of sequences, keeping \n");
   printf("                at least this many seqs in each MSA block of length 50 \n");
@@ -847,6 +851,23 @@ void HHblits::ProcessArguments(int argc, char** argv, Parameters& par) {
       par.notags = 1;
     else if (!strcmp(argv[i], "-maxfilt") && (i < argc - 1))
       par.maxnumdb = atoi(argv[++i]);
+    else if (!strcmp(argv[i], "-interim_filter")){
+      if (++i >= argc || argv[i][0] == '-') {
+        help(par);
+        HH_LOG(ERROR) << "No state following -interim_filter" << std::endl;
+        exit(4);
+      } else {
+        if(!strcmp(argv[i], "NONE")) {
+          par.interim_filter = INTERIM_FILTER_NONE;
+        } else if(!strcmp(argv[i], "FULL")) {
+          par.interim_filter = INTERIM_FILTER_FULL;
+        } else {
+          help(par);
+          HH_LOG(ERROR) << "No state out of NONE|FULL following -interim_filter" << std::endl;
+          exit(4);
+        }
+      }
+    }
     else {
       HH_LOG(WARNING) << "Ignoring unknown option " << argv[i] << std::endl;
     }
@@ -857,8 +878,12 @@ void HHblits::ProcessArguments(int argc, char** argv, Parameters& par) {
 
 void HHblits::mergeHitsToQuery(Hash<Hit>* previous_hits,
                                int& seqs_found, int& cluster_found) {
-  // For each template below threshold
 
+  // Remove sequences with seq. identity larger than seqid percent (remove the shorter of two)
+  const float COV_ABS = 25;     // min. number of aligned residues
+  int cov_tot = std::max(std::min((int) (COV_ABS / Qali->L * 100 + 0.5), 70), par.coverage);
+
+  // For each template below threshold
   hitlist.Reset();
   while (!hitlist.End()) {
     Hit hit_cur = hitlist.ReadNext();
@@ -890,6 +915,12 @@ void HHblits::mergeHitsToQuery(Hash<Hit>* previous_hits,
 
     Tali.N_filtered = Tali.Filter(par.max_seqid_db, S, par.coverage_db,
                                   par.qid_db, par.qsc_db, par.Ndiff_db);
+
+    if(par.interim_filter == INTERIM_FILTER_FULL && Tali.N_filtered + Qali->N_in >= MAXSEQ) {
+  	  Qali->N_filtered = Qali->Filter(par.max_seqid, S, cov_tot, par.qid, par.qsc, par.Ndiff);
+      Qali->Shrink();
+    }
+
     Qali->MergeMasterSlave(hit_cur, Tali, hit_cur.name, par.maxcol);
 
     if (Qali->N_in >= MAXSEQ)
@@ -904,10 +935,6 @@ void HHblits::mergeHitsToQuery(Hash<Hit>* previous_hits,
   Qali->FilterForDisplay(par.max_seqid, par.mark, S, par.coverage, par.qid,
                          par.qsc, par.nseqdis);
 
-  // Remove sequences with seq. identity larger than seqid percent (remove the shorter of two)
-  const float COV_ABS = 25;     // min. number of aligned residues
-  int cov_tot = std::max(std::min((int) (COV_ABS / Qali->L * 100 + 0.5), 70),
-                         par.coverage);
 
   HH_LOG(DEBUG) << "Filter new alignment with cov " << cov_tot
                           << std::endl;
@@ -1392,7 +1419,7 @@ void HHblits::run(FILE* query_fh, char* query_path) {
     }
 
     if (new_hits == 0 || round == par.num_rounds || q->Neff_HMM > par.neffmax || Qali->N_in >= MAXSEQ) {
-      if (round < par.num_rounds) {
+      if (new_hits == 0 && round < par.num_rounds) {
         HH_LOG(INFO) << "No new hits found in iteration " << round
                                << " => Stop searching" << std::endl;
       }
@@ -1576,6 +1603,10 @@ void HHblits::printHHRFile() {
 
 void HHblits::writeScoresFile(HHblits& hhblits, std::stringstream& out) {
   hhblits.hitlist.PrintScoreFile(hhblits.q, out);
+}
+
+void HHblits::writeM8(HHblits& hhblits, std::stringstream& out) {
+  hhblits.hitlist.PrintM8File(hhblits.q, out);
 }
 
 void HHblits::writePairwiseAlisFile(HHblits& hhblits, std::stringstream& out) {

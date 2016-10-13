@@ -28,8 +28,14 @@ struct OutputFFIndex {
     void (*print)(HHblits&, std::stringstream&);
 
     void close() {
-      fclose(data_fh);
+      char index_filename[NAMELEN];
+      snprintf(index_filename, FILENAME_MAX, "%s.ffindex", base);
+
+      fflush(index_fh);
+      ffsort_index(index_filename, index_fh);
+
       fclose(index_fh);
+      fclose(data_fh);
     }
 
     void saveOutput(HHblits& hhblits, char* name) {
@@ -163,6 +169,7 @@ int main(int argc, char **argv) {
   makeOutputFFIndex(par.hhmfile, &HHblits::writeHMMFile, outputDatabases);
   makeOutputFFIndex(par.alnfile, &HHblits::writeA3MFile, outputDatabases);
   makeOutputFFIndex(par.matrices_output_file, &HHblits::writeMatricesFile, outputDatabases);
+  makeOutputFFIndex(par.m8file, &HHblits::writeM8, outputDatabases);
 
   std::vector<HHblitsDatabase*> databases;
   HHblits::prepareDatabases(par, databases);
