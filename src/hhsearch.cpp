@@ -346,7 +346,17 @@ void HHsearch::ProcessArguments(int argc, char** argv, Parameters& par) {
 			} else {
 				strcpy(par.scorefile, argv[i]);
 			}
-		} else if (!strcmp(argv[i], "-atab")) {
+		}
+        else if (!strcmp(argv[i], "-blasttab")) {
+            if (++i >= argc || argv[i][0] == '-') {
+                help(par);
+                HH_LOG(ERROR) << "No file following -blasttab" << std::endl;
+                exit(4);
+            } else {
+                strcpy(par.m8file, argv[i]);
+            }
+        }
+        else if (!strcmp(argv[i], "-atab")) {
 			if (++i >= argc || argv[i][0] == '-') {
 				help(par);
 				HH_LOG(ERROR) << "No query file following -atab" << std::endl;
@@ -495,7 +505,7 @@ void HHsearch::ProcessArguments(int argc, char** argv, Parameters& par) {
 			par.altali = atoi(argv[++i]);
     else if (!strncmp(argv[i], "-smin", 4) && (i < argc - 1))
       par.smin = atof(argv[++i]);
-		else if (!strcmp(argv[i], "-M") && (i < argc - 1))
+		else if (!strcmp(argv[i], "-M") && (i < argc - 1)) {
 			if (!strcmp(argv[++i], "a2m") || !strcmp(argv[i], "a3m"))
 				par.M = 1;
 			else if (!strcmp(argv[i], "first"))
@@ -505,6 +515,7 @@ void HHsearch::ProcessArguments(int argc, char** argv, Parameters& par) {
 				par.M = 2;
 			} else
 			  HH_LOG(WARNING) << "Ignoring unknown argument: -M " 	<< argv[i] << std::endl;
+		}
 		else if (!strcmp(argv[i], "-shift") && (i < argc - 1))
 			par.shift = atof(argv[++i]);
 		else if ((!strcmp(argv[i], "-mact"))

@@ -234,6 +234,7 @@ void HHblits::Reset() {
   hitlist.Reset();
   while (!hitlist.End())
     hitlist.Delete().Delete();
+  hitlist.Reset();
 
   std::map<int, Alignment*>::iterator it;
   for (it = alis.begin(); it != alis.end(); it++) {
@@ -241,6 +242,7 @@ void HHblits::Reset() {
   }
   alis.clear();
 
+  // Prepare multi-threading - reserve memory for threads, intialize, etc.
   for (int bin = 0; bin < par.threads; bin++) {
     viterbiMatrices[bin]->DeleteBacktraceMatrix();
     posteriorMatrices[bin]->DeleteProbabilityMatrix();
@@ -328,7 +330,7 @@ void HHblits::help(Parameters& par, char all) {
     printf(" -maxfilt                  max number of hits allowed to pass 2nd prefilter (default=%i)   \n", par.maxnumdb);
     printf(" -min_prefilter_hits       min number of hits to pass prefilter (default=%i)               \n", par.min_prefilter_hits);
     printf(" -prepre_smax_thresh       min score threshold of ungapped prefilter (default=%i)               \n", par.preprefilter_smax_thresh);
-    printf(" -pre_evalue_thresh        max E-value threshold of Smith-Waterman prefilter score (default=%i)\n", par.prefilter_evalue_thresh);
+    printf(" -pre_evalue_thresh        max E-value threshold of Smith-Waterman prefilter score (default=%f)\n", par.prefilter_evalue_thresh);
     printf(" -pre_bitfactor            prefilter scores are in units of 1 bit / pre_bitfactor (default=%i)\n", par.prefilter_bit_factor);
     printf(" -pre_gap_open             gap open penalty in prefilter Smith-Waterman alignment (default=%i)\n", par.prefilter_gap_open);
     printf(" -pre_gap_extend           gap extend penalty in prefilter Smith-Waterman alignment (default=%i)\n", par.prefilter_gap_extend);
@@ -452,6 +454,7 @@ void HHblits::help(Parameters& par, char all) {
   printf(" -cpu <int>     number of CPUs to use (for shared memory SMPs) (default=%i)      \n", par.threads);
   if (all) {
 	printf(" -scores <file> write scores for all pairwise comparisions to file               \n");
+	  printf(" -filter_matrices filter matrices for similarity to output at most 100 matrices\n");
     printf(" -atab   <file> write all alignments in tabular layout to file                   \n");
     printf(" -maxres <int>  max number of HMM columns (def=%5i)             \n", par.maxres);
     printf(" -maxmem [1,inf[ limit memory for realignment (in GB) (def=%.1f)          \n", par.maxmem);
@@ -527,6 +530,8 @@ void HHblits::ProcessArguments(int argc, char** argv, Parameters& par) {
         exit(4);
       } else
         strcpy(par.alnfile, argv[i]);
+    } else if (!strcmp(argv[i], "-filter_matrices")) {
+        par.filter_matrices = true;
     } else if (!strcmp(argv[i], "-ohhm")) {
       if (++i >= argc || argv[i][0] == '-') {
         help(par);
@@ -585,7 +590,17 @@ void HHblits::ProcessArguments(int argc, char** argv, Parameters& par) {
       } else {
         strcpy(par.scorefile, argv[i]);
       }
-    } else if (!strcmp(argv[i], "-atab")) {
+    }
+    else if (!strcmp(argv[i], "-blasttab")) {
+        if (++i >= argc || argv[i][0] == '-') {
+            help(par);
+            HH_LOG(ERROR) << "No file following -blasttab" << std::endl;
+            exit(4);
+        } else {
+            strcpy(par.m8file, argv[i]);
+        }
+    }
+    else if (!strcmp(argv[i], "-atab")) {
       if (++i >= argc || argv[i][0] == '-') {
         help(par);
         HH_LOG(ERROR) << "No file following -atab" << std::endl;
@@ -621,7 +636,7 @@ void HHblits::ProcessArguments(int argc, char** argv, Parameters& par) {
         par.matrix = 80;
       else
         HH_LOG(WARNING) << "Ignoring unknown option " << argv[i] << std::endl;
-    } else if (!strcmp(argv[i], "-M") && (i < argc - 1))
+    } else if (!strcmp(argv[i], "-M") && (i < argc - 1)) {
       if (!strcmp(argv[++i], "a2m") || !strcmp(argv[i], "a3m"))
         par.M = 1;
       else if (!strcmp(argv[i], "first"))
@@ -631,6 +646,7 @@ void HHblits::ProcessArguments(int argc, char** argv, Parameters& par) {
         par.M = 2;
       } else
         HH_LOG(WARNING) << "Ignoring unknown argument: -M " << argv[i] << std::endl;
+    }
     else if (!strcmp(argv[i], "-p") && (i < argc - 1))
       par.p = atof(argv[++i]);
     else if (!strcmp(argv[i], "-E") && (i < argc - 1))
@@ -842,6 +858,7 @@ void HHblits::ProcessArguments(int argc, char** argv, Parameters& par) {
 void HHblits::mergeHitsToQuery(Hash<Hit>* previous_hits,
                                int& seqs_found, int& cluster_found) {
   // For each template below threshold
+
   hitlist.Reset();
   while (!hitlist.End()) {
     Hit hit_cur = hitlist.ReadNext();
@@ -947,7 +964,7 @@ void HHblits::RescoreWithViterbiKeepAlignment(HMMSimd& q_vec,
 
   for (std::vector<Hit>::size_type i = 0; i != hits_to_add.size(); i++) {
     stringstream ss_tmp;
-    ss_tmp << hits_to_add[i].name << "__" << hits_to_add[i].irep;
+    ss_tmp << hits_to_add[i].file << "__" << hits_to_add[i].irep;
     if (previous_hits->Contains((char*) ss_tmp.str().c_str())) {
       Hit hit_cur = previous_hits->Remove((char*) ss_tmp.str().c_str());
       previous_hits->Add((char*) ss_tmp.str().c_str(), hits_to_add[i]);
@@ -1183,10 +1200,14 @@ void HHblits::run(FILE* query_fh, char* query_path) {
 
     // Save HMM without pseudocounts for prefilter query-profile
     *q_tmp = *q;
+    HMM* q_rescore = new HMM(MAXSEQDIS, par.maxres);
+
 
     PrepareQueryHMM(par, input_format, q, pc_hhm_context_engine,
                     pc_hhm_context_mode, pb, R);
-    q_vec.MapOneHMM(q);
+    //deep copy for rescoring of q
+    *q_rescore = *q;
+    q_vec.MapOneHMM(q_rescore);
 
     ////////////////////////////////////////////
     // Prefiltering
@@ -1289,36 +1310,6 @@ void HHblits::run(FILE* query_fh, char* query_path) {
       new_hits++;
     }
 
-    if (new_hits == 0 || round == par.num_rounds) {
-      if (round < par.num_rounds) {
-        HH_LOG(INFO) << "No new hits found in iteration " << round
-                               << " => Stop searching" << std::endl;
-      }
-
-      if (old_entries.size() > 0 && par.realign_old_hits) {
-        HH_LOG(INFO)
-            << "Rescoring previously found HMMs with Viterbi algorithm"
-            << std::endl;
-
-        ViterbiRunner viterbirunner(viterbiMatrices, dbs, par.threads);
-        std::vector<Hit> hits_to_add = viterbirunner.alignment(par, &q_vec,
-                                                               old_entries,
-                                                               par.qsc_db, pb,
-                                                               S, Sim, R, par.ssm, S73, S33, S37);
-
-        add_hits_to_hitlist(hits_to_add, hitlist);
-
-        // Add dbfiles_old to dbfiles_new for realign
-        new_entries.insert(new_entries.end(), old_entries.begin(),
-                           old_entries.end());
-      } else if (!par.realign_old_hits && previous_hits->Size() > 0) {
-        HH_LOG(INFO)
-            << "Rescoring previously found HMMs with Viterbi algorithm"
-            << std::endl;
-        RescoreWithViterbiKeepAlignment(q_vec, previous_hits);
-      }
-    }
-
     // Realign hits with MAC algorithm
     if (par.realign)
       perform_realign(q_vec, input_format, new_entries);
@@ -1400,25 +1391,58 @@ void HHblits::run(FILE* query_fh, char* query_path) {
           << MAXSEQ << "). Stop searching!" << std::endl;
     }
 
-    if (new_hits == 0 || round == par.num_rounds || q->Neff_HMM > par.neffmax
-        || Qali->N_in >= MAXSEQ)
+    if (new_hits == 0 || round == par.num_rounds || q->Neff_HMM > par.neffmax || Qali->N_in >= MAXSEQ) {
+      if (round < par.num_rounds) {
+        HH_LOG(INFO) << "No new hits found in iteration " << round
+                               << " => Stop searching" << std::endl;
+      }
+
+      if (old_entries.size() > 0 && par.realign_old_hits) {
+        HH_LOG(INFO)
+            << "Recalculating previously found HMMs with Viterbi algorithm"
+            << std::endl;
+
+        ViterbiRunner viterbirunner(viterbiMatrices, dbs, par.threads);
+        std::vector<Hit> hits_to_add = viterbirunner.alignment(par, &q_vec,
+                                                               old_entries,
+                                                               par.qsc_db, pb,
+                                                               S, Sim, R, par.ssm, S73, S33, S37);
+
+        add_hits_to_hitlist(hits_to_add, hitlist);
+
+        if (par.realign)
+          perform_realign(q_vec, input_format, old_entries);
+      } else if (!par.realign_old_hits && previous_hits->Size() > 0) {
+        HH_LOG(INFO)
+            << "Rescoring previously found HMMs with Viterbi algorithm"
+            << std::endl;
+        RescoreWithViterbiKeepAlignment(q_vec, previous_hits);
+      }
+
+      delete q_rescore;
       break;
+    }
+
 
     // Write good hits to previous_hits hash and clear hitlist
     hitlist.Reset();
     while (!hitlist.End()) {
       Hit hit_cur = hitlist.ReadNext();
-      char strtmp[NAMELEN + 6];
-      sprintf(strtmp, "%s__%i%c", hit_cur.file, hit_cur.irep, '\0');
+
+      stringstream ss_tmp;
+      ss_tmp << hit_cur.file << "__" << hit_cur.irep;
+
       if (!par.already_seen_filter || hit_cur.Eval > par.e
-          || previous_hits->Contains(strtmp))
+          || previous_hits->Contains((char*) ss_tmp.str().c_str()))
         hit_cur.Delete();  // Delete hit object (deep delete with Hit::Delete())
       else {
-        previous_hits->Add(strtmp, hit_cur);
+        previous_hits->Add((char*) ss_tmp.str().c_str(), hit_cur);
       }
 
       hitlist.Delete();  // Delete list record (flat delete)
     }
+
+    delete q_rescore;
   }
 
   // Warn, if HMMER files were used
@@ -1427,11 +1451,6 @@ void HHblits::run(FILE* query_fh, char* query_path) {
         << "Using HMMER files results in a drastically reduced sensitivity (>10%%).\n"
         << " We recommend to use HHMs build by hhmake." << std::endl;
   }
-
-//  if (*par.reduced_outfile) {
-//    float qscs[] = { -20, 0, 0.1, 0.2 };
-//    wiggleQSC(par.n_redundancy, qscs, 4, reducedHitlist);
-//  }
 
   for (size_t i = 0; i < all_entries.size(); i++) {
     delete all_entries[i];
@@ -1470,6 +1489,12 @@ void HHblits::writeScoresFile(char* scoresFile) {
   if (*scoresFile) {
     hitlist.PrintScoreFile(q, scoresFile);
   }
+}
+
+void HHblits::writeM8(char* m8File) {
+    if (*m8File) {
+        hitlist.PrintM8File(q, m8File);
+    }
 }
 
 void HHblits::writePairwiseAlisFile(char* pairwiseAlisFile, char outformat) {
@@ -1594,12 +1619,13 @@ void HHblits::writeA3MFile(HHblits& hhblits, std::stringstream& out) {
 
 void HHblits::writeMatricesFile(char* matricesOutputFileName) {
   if (*matricesOutputFileName) {
-    hitlist.PrintMatrices(q, matricesOutputFileName, par.max_number_matrices,
-                          S);
+    hitlist.PrintMatrices(q, matricesOutputFileName, par.filter_matrices,
+                          par.max_number_matrices, S);
   }
 }
 
 void HHblits::writeMatricesFile(HHblits& hhblits, stringstream& out) {
-  hhblits.hitlist.PrintMatrices(hhblits.q, out, hhblits.par.max_number_matrices,
+  hhblits.hitlist.PrintMatrices(hhblits.q, out, hhblits.par.filter_matrices,
+                                hhblits.par.max_number_matrices,
                                 hhblits.S);
 }

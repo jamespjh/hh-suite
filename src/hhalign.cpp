@@ -1,5 +1,5 @@
-// hhalign.C: 
-// Align a multiple alignment to an alignment or HMM 
+// hhalign.C:
+// Align a multiple alignment to an alignment or HMM
 // Print out aligned input sequences in a3m format
 // Error codes: 0: ok  1: file format error  2: file access error  3: memory error  4: internal numeric error  5: command line error
 
@@ -116,6 +116,7 @@ void HHalign::help(Parameters& par, char all) {
   if (all) {
     printf(" -realign       realign displayed hits with max. accuracy (MAC) algorithm \n");
     printf(" -excl <range>  exclude query positions from the alignment, e.g. '1-33,97-168' \n");
+    printf(" -template_excl <range>  exclude template positions from the alignment, e.g. '1-33,97-168' \n");
     printf(" -ovlp <int>    banded alignment: forbid <ovlp> largest diagonals |i-j| of DP matrix (def=%i)\n", par.min_overlap);
     printf(" -alt <int>     show up to this many alternative alignments with raw score > smin(def=%i)  \n", par.altali);
     printf(" -smin <float>  minimum raw score for alternative alignments (def=%.1f)  \n", par.smin);
@@ -527,7 +528,7 @@ void HHalign::ProcessArguments(int argc, char** argv, Parameters& par) {
       par.realign = 1;
     else if (!strcmp(argv[i], "-norealign"))
       par.realign = 0;
-    else if (!strcmp(argv[i], "-M") && (i < argc - 1))
+    else if (!strcmp(argv[i], "-M") && (i < argc - 1)) {
       //TODO: M a3m not defined in the help
       if (!strcmp(argv[++i], "a2m") || !strcmp(argv[i], "a3m")){
         par.M = 1;
@@ -544,6 +545,7 @@ void HHalign::ProcessArguments(int argc, char** argv, Parameters& par) {
       }
       else
         HH_LOG(WARNING) << "Ignoring unknown argument: -M " << argv[i] << std::endl;
+    }
     else if (!strcmp(argv[i], "-shift") && (i < argc - 1))
       par.shift = atof(argv[++i]);
     else if (!strcmp(argv[i], "-mact") && (i < argc - 1)) {
@@ -595,6 +597,15 @@ void HHalign::ProcessArguments(int argc, char** argv, Parameters& par) {
       }
       par.exclstr = new char[strlen(argv[i])+1];
       strcpy(par.exclstr,argv[i]);
+    }
+    else if (!strcmp(argv[i],"-template_excl")) {
+      if (++i>=argc) {
+        help(par);
+        HH_LOG(ERROR) << "No expression following -excl" << std::endl;
+        exit(4);
+      }
+      par.template_exclstr = new char[strlen(argv[i])+1];
+      strcpy(par.template_exclstr,argv[i]);
     }
     else {
       HH_LOG(WARNING) << "Ignoring unknown option " << argv[i] << std::endl;

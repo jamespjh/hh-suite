@@ -49,7 +49,6 @@ bool compareIndices(const MACTriple &a, const MACTriple &b);
 
 class PosteriorDecoder {
 public:
-	static const int VEC_SIZE = HMMSimd::VEC_SIZE;
 
 	struct MACBacktraceResult {
 		std::vector<int> * alt_i;
@@ -69,7 +68,7 @@ public:
 	/////////////////////////////////////////////////////////////////////////////////////
 	void realign(HMM &q, HMM &t, Hit &hit, PosteriorMatrix &p_mm, ViterbiMatrix &viterbi_matrix,
 				 std::vector<PosteriorDecoder::MACBacktraceResult> alignment_to_exclude, char * exclstr,
-				 int par_min_overlap, float shift, float mact, float corr);
+				 char* template_exclstr, int par_min_overlap, float shift, float mact, float corr);
 	void excludeMACAlignment(const int q_length, const int t_length, ViterbiMatrix &celloff_matrix, const int elem,
 			MACBacktraceResult & alignment);
 
@@ -129,7 +128,7 @@ private:
 	void macAlgorithm(HMM & q_hmm, HMM & t_hmm, Hit & hit_vec, PosteriorMatrix & p_mm,
 			ViterbiMatrix & viterbi_matrix, float par_mact, const int elem);
 	void backtraceMAC(HMM & q, HMM & t, PosteriorMatrix & p_mm, ViterbiMatrix & backtrace_matrix, const int elem, Hit & hit, float corr);
-	void writeProfilesToHits(HMM &q, HMM &t, PosteriorMatrix &p_mm, Hit &hit);
+	void writeProfilesToHits(HMM &q, HMM &t, PosteriorMatrix &p_mm, ViterbiMatrix & backtrace_matrix, Hit &hit);
 	void initializeBacktrace(HMM & t, Hit & hit);
 
 	void initializeForAlignment(HMM &q, HMM &t, Hit &hit, ViterbiMatrix &viterbi_matrix, const int elem, const int t_max_L, int par_min_overlap);
@@ -143,6 +142,7 @@ private:
 	void printVector(float * vec);
 
 	void exclude_regions(char *exclstr, HMM &q_hmm, HMM &t_hmm, ViterbiMatrix &viterbiMatrix);
+        void exclude_template_regions(char* exclstr, HMM & q_hmm, HMM & t_hmm, ViterbiMatrix& viterbiMatrix);
 };
 
 #endif /* HHPOSTERIORDECODER_H_ */
