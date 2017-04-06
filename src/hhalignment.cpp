@@ -1085,7 +1085,7 @@ void Alignment::Compress(const char infile[], const char cons, const int maxres,
           if (keep[k]) {
             if (X[k][l] < GAP)
               res += wg[k];   // AA or ANY; Changed from <ANY
-            else// if (X[k][l] != ENDGAP)
+            else if (X[k][l] != ENDGAP)
               gap += wg[k];  // else: GAP. ENDGAPs are ignored for counting percentage (multi-domain proteins)
           }
         }
@@ -1100,7 +1100,9 @@ void Alignment::Compress(const char infile[], const char cons, const int maxres,
         h[k] = 1;
         seq[k][0] = '-';
       }
+
       for (l = 1; l <= L; l++) {
+        // for first and last columns look for slightly shifted columns for nr gaps
         if (percent_gaps[l] <= float(Mgaps)) {
           if (i >= maxres - 2) {
             HH_LOG(WARNING)
